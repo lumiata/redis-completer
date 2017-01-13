@@ -89,7 +89,7 @@ following components:
 
 In the `example/data` directory is a file containing a little over 1000 tweets.
 (These tweets are mashups of Kanye West + Victor Medvedev and Martha Stewart +
-Lady Gaga, produced by my 
+Lady Gaga, produced by my
 [markov-tweeter](https://github.com/jedp/markov-tweeter).)
 
 When you run `example/app.js`, it will make sure these have been processed and
@@ -98,6 +98,3 @@ asynchronously, so you can start using the app right away.
 
 On the web page, start typing, and hopefully we'll see a real-time search for
 tweets.  
-
-
-

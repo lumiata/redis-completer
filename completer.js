@@ -1,5 +1,5 @@
-var r = require('redis').createClient();
-var _ = require('underscore');
+var redis = require('redis');
+var _ = require('lodash');
 var fs = require('fs');
 
 // prefixes for redis sets
@@ -7,6 +7,30 @@ var fs = require('fs');
 var _appPrefix = '';
 var ZKEY_COMPL = 'compl';
 var ZKEY_DOCS_PREFIX = 'docs:';
+
+
+var r; // redis client
+
+// Try to connect to localhost by default to preserve backwards compatibility.
+// r = redis.createClient();
+// r.on("error", function (err) {
+//   console.log("Redis error: " + err);
+//   console.log('Redis-Completer unable to connect to redis on 127.0.0.1:6379.');
+//   this.closing = true; // Don't retry.
+// });
+
+// Initialization function that allows for a custom redis host and port.
+exports.customServer = function (redis_port, redis_host) {
+    r = redis.createClient(redis_port, redis_host);
+    r.on('connect', function() {
+      console.log('Redis-Completer connected to ',redis_host+':'+redis_port);
+    });
+    r.on("error", function (err) {
+      console.log('Redis-Completer unable to connect to ',redis_host+':'+redis_port);
+      this.closing = true; // Don't retry.
+    });
+    return this;
+};
 
 exports.applicationPrefix = applicationPrefix = function(prefix) {
   // update key prefixes with user-specified application prefix
@@ -31,7 +55,7 @@ exports.addCompletions = addCompletions = function (phrase, id, score, cb) {
       score = null;
   }
 
-  
+
   var text = phrase.trim().toLowerCase();
   if (! text) {
     return null, null;
@@ -71,7 +95,7 @@ exports.getWordCompletions = getWordCompletions = function(word, count, callback
   // get up to count completions for the given word
   // if prefix ends with '*', get the next exact completion
   var rangelen = 50;
- 
+
   var prefix = word.toLowerCase().trim();
   var getExact = word[word.length-1] === '*'
   var results = []
@@ -91,7 +115,7 @@ exports.getWordCompletions = getWordCompletions = function(word, count, callback
         if (! entries || entries.length === 0) {
           break;
         }
-        
+
         for (var i=0; i<entries.length; i++) {
           var entry = entries[i];
           var minlen = Math.min(entry.length, prefix.length);
@@ -105,7 +129,7 @@ exports.getWordCompletions = getWordCompletions = function(word, count, callback
             if (getExact) {
               return callback(null, results);
             }
-          } 
+          }
         }
       }
       return callback(null, results);
@@ -160,20 +184,20 @@ exports.search = search = function(phrase, count, callback) {
     if (err) {
       callback(err, null);
     } else {
-      var keys = _.map(completions, function(key) { 
-        return ZKEY_DOCS_PREFIX+key 
+      var keys = _.map(completions, function(key) {
+        return ZKEY_DOCS_PREFIX+key
       });
 
-      if (keys.length) { 
+      if (keys.length) {
         var results = {};
         var iter = 0;
 
         // accumulate docs and the scores for each key
-        
+
         _.each(keys, function(key) {
           r.zrevrangebyscore(key, 'inf', 0, 'withscores', function (err, docs) {
             // returns a list of [doc, score, doc, score ...]
-            iter ++;  
+            iter ++;
             if (err) {
               return callback(err, {});
             } else {
